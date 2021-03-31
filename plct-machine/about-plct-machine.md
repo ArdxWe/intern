@@ -7,13 +7,13 @@
 
 ## 特性
 
-支持运行一下扩展的`RISCV`可执行文件:
+支持运行以下扩展的`RISCV`可执行文件:
 
 - [P扩展](https://github.com/romanheros/qemu/tree/packed-upstream-v1)
 
 - [K扩展](https://github.com/isrc-cas/plct-qemu/tree/plct-k-dev)
 
-- [B扩展]()
+- [B扩展](https://github.com/sifive/qemu/tree/rvb-upstream-v4)
 
 - [Zfinx扩展](https://github.com/isrc-cas/plct-qemu/tree/plct-zfinx-dev)
 
