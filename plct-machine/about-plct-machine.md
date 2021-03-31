@@ -28,6 +28,7 @@ $ git checkout new-machine-dev
 $ mkdir build
 $ cd build
 $ ../configure --target-list=riscv64-linux-user,riscv64-softmmu
+$ make
 $ ./qemu-riscv64 -cpu plct-u64 <your elf>
 ```
 
@@ -38,6 +39,7 @@ $ git checkout new-machine-dev
 $ mkdir build
 $ cd build
 $ ../configure --target-list=riscv32-linux-user,riscv64-softmmu
+$ make
 $ ./qemu-riscv32 -cpu plct-u32 <your elf>
 ```
 
