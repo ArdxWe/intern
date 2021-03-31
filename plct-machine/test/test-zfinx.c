@@ -14,54 +14,58 @@ int main(){
 
 // fadd.s
   c = a + b;
-  printf("%f is 3.0\n",c);
+  printf("fadd %f is 3.000000\n",c);
 // fsub.s
   c = a - b;
-  printf("%f is -1.0\n",c);
+  printf("fsub %f is -1.000000\n",c);
 // fmul.s
   c = a * b;
-  printf("%f is 2.0\n",c);
+  printf("fmul %f is 2.000000\n",c);
 // fdiv.s
   c = a / b;
-  printf("%f is 0.5\n",c);
+  printf("fdiv %f is 0.500000\n",c);
 // fneg.s  
   c = -a;
-  printf("%f is -1.0\n",c);
+  printf("fneg %f is -1.000000\n",c);
 // fabs.s
   c = fabs(c);
-  printf("%f is 1.0\n",c);
+  printf("fabs %f is 1.000000\n",c);
 //fsqrt.s
   c = sqrt(a);
-  printf("%f is 1.0\n",c);
+  printf("fsqrt %f is 1.000000\n",c);
 // fmax.s
   c = fmax(a,b);
-  printf("%f is 2.0\n",c);
+  printf("fmax %f is 2.000000\n",c);
 // fmin.s
-  c = fmax(a,b);
-  printf("%f\n",c);
+  c = fmin(a,b);
+  printf("fmin %f is 1.000000\n",c);
 // compare instructions
-if(a==b && a>b && a>=b && a<b && a<=b) c = 5.0;
+  printf("feq %d is 0\n", a==b);
+  printf("flt %d is 1\n", a<b);
+  printf("fle %d is 1\n", a<=b);
+  printf("fgt %d is 0\n", a>b);
+  printf("fge %d is 0\n", a>=b);
 // cast instructions
 unsigned u = (unsigned)c;
-printf("%u\n is 5",u);
+printf("fcvt.wu.s %u is 1\n",u);
 unsigned long lu = (unsigned long)c;
-printf("%lu is 5\n",lu);
+printf("fcvt.w.s %lu is 1\n",lu);
 int d = (int)c;
-printf("%d is 5\n",d);
+printf("fcvt.lu.s %d is 1\n",d);
 long l = (long)c;
-printf("%ld is 5\n",l);
+printf("fcvt.l.s %ld is 1\n",l);
 double e = (double)c;
-printf("%f is 5.0\n",e);
+printf("fcvt.d.s %lf is 1.000000\n",e);
 c = (float)u;
-printf("%f is 5.0\n",c);
+printf("fcvt.s.wu %f is 1.000000\n",c);
 c = (float)lu;
-printf("%f is 5.0\n",c);
+printf("fcvt.s.w %f is 1.000000\n",c);
 c = (float)d;
-printf("%f is 5.0\n",c);
+printf("fcvt.s.lu %f is 1.000000\n",c);
 c = (float)l;
-printf("%f is 5.0\n",c);
-c = (double)e;
-printf("%f is 5.0\n",c);
+printf("fcvt.s.l %f is 1.000000\n",c);
+c = (float)e;
+printf("fcvt.s.d %f is 1.000000\n",c);
 
 return 0;
 }
