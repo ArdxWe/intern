@@ -471,7 +471,7 @@ Result ok !!!
 
 测试如此，生成对应扩展的对应文件也是如此
 
-完整的构建，测试视频看这里[video](https://address.com)
+完整的构建，测试视频看这里[bilibili](https://www.bilibili.com/video/BV1Zb4y1Q7oX)
 
 
 ## 联系
