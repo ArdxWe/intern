@@ -445,7 +445,7 @@ runspike :
 ```
 
 注意
- - `GCC_TOOLCHAIN_DIR` 和 `SYSROOT_DIR` 应该改为本机目录，使用普通版本的工具链即可
+ - `GCC_TOOLCHAIN_DIR`  `SYSROOT_DIR` 和 `LLVM` 应该改为本机目录，使用普通版本的工具链即可
  - 不要修改其他
 
 编译
