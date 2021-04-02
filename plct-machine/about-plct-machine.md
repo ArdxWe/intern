@@ -24,7 +24,7 @@
 
 64位:
 ```
-$ git checkout new-machine-dev
+$ git clone -b new-machine-dev https://github.com/isrc-cas/plct-qemu.git
 $ mkdir build
 $ cd build
 $ ../configure --target-list=riscv64-linux-user,riscv64-softmmu
@@ -35,7 +35,7 @@ $ ./qemu-riscv64 -cpu plct-u64 <your elf>
 32位:
 
 ```
-$ git checkout new-machine-dev
+$ git clone -b new-machine-dev https://github.com/isrc-cas/plct-qemu.git
 $ mkdir build
 $ cd build
 $ ../configure --target-list=riscv32-linux-user,riscv64-softmmu
