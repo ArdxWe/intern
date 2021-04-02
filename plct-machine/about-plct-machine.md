@@ -351,7 +351,27 @@ $ make -f q64.mk
 
 ### `Zfinx`
 
-应该使用 `Zfinx` 版本的 gcc去编译[test-zfinx.c](./test/test-zfinx.c)
+应该使用 `Zfinx` 版本的`gcc`去编译[test-zfinx.c](./test/test-zfinx.c)
+
+单精度浮点
+
+```
+$ git clone https://github.com/pz9115/riscv-gcc
+$ cd riscv-gcc
+$ ./configure --prefix=/opt/rv64zfinx/ --with-arch=rv64imaczfinx --with-abi=lp64 --with-abi=lp64 --with-multilib-generator="rv64imaczfinx-lp64--"
+$ make
+$ make install
+```
+
+双精度浮点
+
+```
+$ git clone https://github.com/pz9115/riscv-gcc
+$ cd riscv-gcc
+$ ./configure --prefix=/opt/rv64zfinx/ --with-arch=rv64imaczdinxzfinx --with-abi=lp64 --with-abi=lp64 --with-multilib-generator="rv64imaczdinxzfinx-lp64--"
+$ make
+$ make install
+```
 
 执行
 
