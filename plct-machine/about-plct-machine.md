@@ -410,7 +410,7 @@ fcvt.s.d 1.000000 is 1.0
 下载
 
 ```
-$ git clone https://github.com/isrc-cas/rvv-llvm.git
+$ git clone -b rvv-iscas https://github.com/isrc-cas/rvv-llvm.git
 ```
 
 构建
