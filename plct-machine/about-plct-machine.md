@@ -211,11 +211,18 @@ int main()
 	return fail;
 }
 ```
-创建`q64.mk`配置文件路径
+
+在repo根目录下创建`test`目录
+
+```
+$ mkdir test
+```
+
+创建`q64.mk`配置文件路径(会向`test`目录写入文件)
 
 ```
 $ vim q64.mk
-$ cat 164.mk
+$ cat q64.mk
 #	rv64.mk
 #	2021-02-14	Markku-Juhani O. Saarinen <mjos@pqshield.com>
 #   Copyright (c) 2021, PQShield Ltd.  All rights reserved.
