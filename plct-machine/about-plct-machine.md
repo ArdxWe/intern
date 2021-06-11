@@ -365,7 +365,7 @@ $ make -f q64.mk
 ```
 $ git clone https://github.com/pz9115/riscv-gcc
 $ cd riscv-gcc
-$ ./configure --prefix=/opt/rv64zfinx/ --with-arch=rv64imaczfinx --with-abi=lp64 --with-abi=lp64 --with-multilib-generator="rv64imaczfinx-lp64--"
+$ ./configure --prefix=/opt/rv64zfinx/ --with-arch=rv64imaczdinxzfinx --with-abi=lp64 --with-multilib-generator="rv64imaczdinxzfinx-lp64--"
 $ make
 $ make install
 ```
