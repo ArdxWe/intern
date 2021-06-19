@@ -13,18 +13,19 @@
 
 - [K扩展](https://github.com/isrc-cas/plct-qemu/tree/plct-k-dev)
 
-- [B扩展](https://github.com/sifive/qemu/tree/rvb-upstream-v4)
+- [B扩展](https://github.com/sifive/qemu/tree/rvb-upstream-v6)
 
 - [Zfinx扩展](https://github.com/isrc-cas/plct-qemu/tree/plct-zfinx-dev)
 
 - [RVV1.0](https://github.com/sifive/qemu/tree/rvv-1.0-upstream-v7-vfredosum)
 
 ## 构建
+
 这意味着我们可以这样使用
 
 64位:
 ```
-$ git clone -b new-machine-dev https://github.com/isrc-cas/plct-qemu.git
+$ git clone -b plct-machine-dev https://github.com/isrc-cas/plct-qemu.git
 $ mkdir build
 $ cd build
 $ ../configure --target-list=riscv64-linux-user,riscv64-softmmu
@@ -35,89 +36,54 @@ $ ./qemu-riscv64 -cpu plct-u64 <your elf>
 32位:
 
 ```
-$ git clone -b new-machine-dev https://github.com/isrc-cas/plct-qemu.git
+$ git clone -b plct-machine-dev https://github.com/isrc-cas/plct-qemu.git
 $ mkdir build
 $ cd build
-$ ../configure --target-list=riscv32-linux-user,riscv64-softmmu
+$ ../configure --target-list=riscv32-linux-user,riscv32-softmmu
 $ make
 $ ./qemu-riscv32 -cpu plct-u32 <your elf>
 ```
 
 ## 使用
 
- 针对不同的扩展，我们需要在执行的时候添加一些选项(以64位,`QEMU`用户态为例)
+针对不同的扩展，我们需要在执行的时候添加一些选项(以64位,`QEMU`用户态为例)
  
- 当然也可以在Linux下执行，这时需要用9p来做文件映射， 将本地文件映射到Linux下
+当然也可以在Linux下执行，这时需要用9p来做文件映射， 将本地文件映射到Linux下
 
 
 `P` 扩展:
- ```
- $ ./qemu-riscv64 -cpu plct-u64，x-p=true,Zpsfoperand=true,pext_spec=v0.9.4 <your elf>
- ```
+```
+$ ./qemu-riscv64 -cpu plct-u64，x-p=true,Zpsfoperand=true,pext_spec=v0.9.4 <your elf>
+$ ./qemu-riscv32 -cpu plct-u32，x-p=true,Zpsfoperand=true,pext_spec=v0.9.4 <your elf>
+```
 
- `K` 扩展:
- ```
- $ ./qemu-riscv64 -cpu plct-u64,x-k=true <your elf>
- ```
+`K` 扩展:
+```
+$ ./qemu-riscv64 -cpu plct-u64,x-k=true,x-b=true <your elf>
+$ ./qemu-riscv32 -cpu plct-u32,x-k=true,x-b=true <your elf>
+```
 
- `B`扩展:
- ```
- $ ./qemu-riscv64 -cpu plct-u64,x-b=true <your elf>
- ```
+`B`扩展:
+```
+$ ./qemu-riscv64 -cpu plct-u64,x-b=true <your elf>
+$ ./qemu-riscv32 -cpu plct-u32,x-b=true <your elf>
+```
 
- `Zfinx` 扩展:
+`Zfinx` 扩展:
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zfinx=true <your elf>
+$ ./qemu-riscv64 -cpu plct-u64,Zdinx=true <your elf>
+$ ./qemu-riscv32 -cpu plct-u32,Zfinx=true <your elf>
+$ ./qemu-riscv32 -cpu plct-u32,Zdinx=true <your elf>
 ```
 
 `RVV1.0`:
 ```
 $ ./qemu-riscv64 -cpu plct-u64,x-v=true <your elf>
+$ ./qemu-riscv32 -cpu plct-u32,x-v=true <your elf>
 ```
 
 ## 测试
-
-|   扩展              | 测试代码                  |
-| :------------:     | :---------------: |
-| `P`             | [test-p.c](./test/test-p.c)|
-| `K`             | [repo](https://github.com/rvkrypto/rvkrypto-fips) |
-| `B`             | [repo](https://github.com/rvkrypto/rvkrypto-fips) |
-| `Zfinx`         | [test-zfinx.c](./test/test-zfinx.c) |
-| `RVV1.0` | [repo](https://github.com/RALC88/riscv-vectorized-benchmark-suite/tree/rvv-1.0) |
-
-### `P`
-
-使用普通版本的工具链就可以
-
-```
-$ git clone https://github.com/riscv/riscv-gnu-toolchain
-$ sudo apt-get install autoconf automake autotools-dev curl python3 libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev
-$ cd riscv-gnu-toolchain
-$ ./configure --prefix=/opt/riscv
-$ make
-```
-
-可以确认一下 gcc位置
-
-```
-$ where riscv64-unknown-elf-gcc       
-/home/ardxwe/PLCT/Bin/riscv64/bin/riscv64-unknown-elf-gcc
-```
-
-编译`p`扩展测试代码[test-p.c](./test/test-p.c)
-
-```
-$ riscv64-unknown-elf-gcc test-p.c -O1 -o p
-```
-
-使用我们这个版本编译生成的`QEMU`路径执行
-
-```
-$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-p=true,Zp64=true,pext_spec=v0.9.2 ~/PLCT/Code/p
-add32 result: 0x300000009
-add   result: 0x300000009
-result OK !!!
-```
 
 ### `K`
 
@@ -130,9 +96,9 @@ $ source bin/conf.sh
 $ ./tools/start-from-scratch.sh
 ```
 
-为了运行 benchmark 需要执行
+为了可以执行 benchmarks
 ```
-$ source bin/conf.sh
+$ source ./bin/conf.sh
 $ git submodule update --init extern/riscv-arch-test
 ```
 
@@ -153,6 +119,7 @@ index 21a4338..7fb6cd2 100644
 -       sed -i "s/^bbl loader/#/" $${@}
 +       /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-k=true,x-b=true $(call map_elf,${1},${3}) > $${@}
 ```
+修改后的文件可以在 [这里](./test/k/common64.mk) 获取
 
 运行
 ```
@@ -168,7 +135,7 @@ ct  == b'0470c1bf16d094f75092bab604cb340d'
     != b'3925841d02dc09fbdc118597196a0b32'
 make: *** [test/Makefile.in:45: run-test-aes_128_zscrypto_rv64] Error 1
 ```
-`k` RV64还有点问题
+RV64还有点问题
 
 #### RV32
 修改 benchmarks/common.mk
@@ -190,6 +157,7 @@ index 21a4338..4f20687 100644
  TARGETS += $(call map_elf,${1},${3})
  TARGETS += $(call map_dis,${1},${3})
 ```
+修改后的文件可以在 [这里](./test/k/common32.mk) 获取
 
 运行
 ```
@@ -205,15 +173,15 @@ aes_256_zscrypto_rv32 AES 256 Test passed. enc: 209332, dec: 210708, kse: 155938
 
 ### Zfinx
 
-`Zfinx` 版本的可执行测试文件在 `test/zfinx` 目录
+`Zfinx` 版本的测试源代码在 [这里](./test/zfinx/test-zfinx.c) 可执行测试文件在 [这个](./test/zfinx) 目录
 
-- 选项 `Zfinx=true` 可以执行以 `Zfinx` 开头的文件 `Zfinx_fp64.elf` `Zfinx_dp64.elf`
+- 选项 `Zfinx=true` 可以执行以 `Zfinx` 开头的可执行文件 `Zfinx_fp64.elf` `Zfinx_dp64.elf`等
 
-- 选项 `Zdinx=true` 可以执行以 `Zfinx` 和 `Zdinx` 开头的可执行文件 `Zfinx_fp64.elf` `Zfinx_dp64.elf` `Zdinx_fp64.elf` `Zdinx_dp64.elf`
+- 选项 `Zdinx=true` 可以执行以 `Zfinx` 和 `Zdinx` 开头的可执行文件 `Zfinx_fp64.elf` `Zfinx_dp64.elf` `Zdinx_fp64.elf` `Zdinx_dp64.elf`等
 
 #### `zfinx` 选项对于`RV64`
 
-`zfinx_fp64.elf`
+[zfinx_fp64.elf](./test/zfinx/zfinx_fp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp64.elf
 fadd 3.000000 is 3.000000
@@ -242,7 +210,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-`zfinx_dp64.elf`
+[zfinx_dp64.elf](./test/zfinx/zfinx/zfinx_dp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp64.elf
 fadd 3.000000 is 3.000000
@@ -273,7 +241,7 @@ fcvt.d.s 1.000000 is 1.000000
 
 #### `zdinx` 选项对于 `RV64`
 
-`zfinx_fp64.elf`
+[zfinx_fp64.elf](./test/zfinx/zfinx_fp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp64.elf
 fadd 3.000000 is 3.000000
@@ -302,7 +270,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-`zfinx_dp64.elf`
+[zfinx_dp64.elf`](./test/zfinx/zfinx_dp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp64.elf
 fadd 3.000000 is 3.000000
@@ -331,7 +299,7 @@ fcvt.d.l 1.000000 is 1.000000
 fcvt.d.s 1.000000 is 1.000000
 ```
 
-`zdinx_fp64.elf`
+[zdinx_fp64.elf](./test/zfinx/zdinx_fp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_fp64.elf
 fadd 3.000000 is 3.000000
@@ -360,7 +328,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-`zdinx_dp64.elf`
+[zdinx_dp64.elf](./test/zfinx/zdinx_dp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_dp64.elf
 fadd 3.000000 is 3.000000
@@ -391,7 +359,7 @@ fcvt.d.s 1.000000 is 1.000000
 
 #### `zfinx` 选项对于 `RV32`
 
-`zfinx_fp32.elf`
+[zfinx_fp32.elf](./test/zfinx/zfinx_fp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp32.elf
 fadd 3.000000 is 3.000000
@@ -420,7 +388,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-`zfinx_dp32.elf`
+[zfinx_dp32.elf](./test/zfinx/zfinx_dp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp32.elf
 fadd 3.000000 is 3.000000
@@ -451,7 +419,7 @@ fcvt.d.s 1.000000 is 1.000000
 
 #### `zdinx` 选项对于 `RV32`
 
-`zfinx_fp32.elf`
+[zfinx_fp32.elf](./test/zfinx/zfinx_fp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp32.elf
 fadd 3.000000 is 3.000000
@@ -480,7 +448,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-`zfinx_dp32.elf`
+[zfinx_dp32.elf](./test/zfinx/zfinx_dp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp32.elf
 fadd 3.000000 is 3.000000
@@ -509,7 +477,7 @@ fcvt.d.l 1.000000 is 1.000000
 fcvt.d.s 1.000000 is 1.000000
 ```
 
-`zdinx_fp32.elf`
+[zdinx_fp32.elf](./zfinx/zdinx_fp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_fp32.elf
 fadd 3.000000 is 3.000000
@@ -538,7 +506,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-`zdinx_dp32.elf`
+[zdinx_dp32.elf](./test/zdinx_dp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_dp32.elf
 fadd 3.000000 is 3.000000
@@ -572,13 +540,11 @@ fcvt.d.s 1.000000 is 1.000000
 使用`PLCT-LLVM`编译器
 
 下载
-
 ```
 $ git clone -b rvv-iscas https://github.com/isrc-cas/rvv-llvm.git
 ```
 
 构建
-
 ```
 $ cd rvv-llvm
 $ mkdir build
@@ -647,13 +613,14 @@ GCC_TOOLCHAIN_DIR := /opt/riscv
 LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
 ...
 ```
+修改后的文件可以在 [这里](./test/v/_axpy/Makefile) 获取
 
 编译
 ```
 $ make vector
 ```
 
-可执行文件会生成在`./bin`目录
+可执行文件会生成在`./bin`目录 文件可以在 [这里](./test/v/_axpy/bin/rvv-test) 获取
 
 运行(这里 `qemu` 和  `rvv-test` 需要替换为对应的路径)
 
@@ -685,9 +652,15 @@ GCC_TOOLCHAIN_DIR := /opt/riscv
 LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
 ...
 ```
+修改后的文件可以在 [这里](./test/v/_blackscholes/Makefile) 获取
+
+编译
+```
+$ make vector
+```
+可执行文件会生成在`./bin`目录 文件可以在 [这里](./test/v/_blackscholes/bin/rvv-test) 获取
 
 运行
-
 ```
 $ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_blackscholes/bin/rvv-test 1 ./input/in_64K.input prices.txt
 50.000000000000000000
@@ -714,11 +687,13 @@ GCC_TOOLCHAIN_DIR := /opt/riscv
 LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
 ...
 ```
+修改的文件可以在 [这里](./test/v/_canneal/Makefile) 获取
 
 编译
 ```
 $ make vector
 ```
+生成的可执行文件可以在 [这里](./test/v/_canneal/bin/canneal_vector.exe) 获取
 
 运行
 ```
@@ -756,11 +731,13 @@ GCC_TOOLCHAIN_DIR := /opt/riscv
 LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
 ...
 ```
+修改后的文件可以在 [这里](./test/v/_particlefilter/Makefile) 获取
 
 编译
 ```
 $ make vector
 ```
+生成的可执行文件可以在 [这里](./test/v/_particlefilter/bin/rvv-test) 获取
 
 运行
 ```
@@ -800,11 +777,13 @@ GCC_TOOLCHAIN_DIR := /opt/riscv
 LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
 ...
 ```
+修改后的文件可以在 [这里](./test/v/_pathfinder/Makefile) 获取
 
 编译
 ```
 $ make vector
 ```
+生成的可执行文件可以在 [这里](./test/v/_pathfinder/bin/rvv-test) 获取
 
 运行
 ```
@@ -829,11 +808,13 @@ GCC_TOOLCHAIN_DIR := /opt/riscv
 LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
 ...
 ```
+修改后的文件可以在 [这里](./test/v/_streamcluster/Makefile) 获取
 
 编译
 ```
 $ make vector
 ```
+生成的可执行文件可以在 [这里](./test/v/_streamcluster/bin/rvv-test) 获取
 
 运行
 ```
@@ -859,6 +840,13 @@ GCC_TOOLCHAIN_DIR := /opt/riscv
 LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
 ...
 ```
+修改后的文件可以在 [这里](./test/v/_swaptions/Makefile) 获取
+
+编译
+```
+$ make vector
+```
+生成的可执行文件可以在 [这里](./test/v/_swaptions/bin/rvv-test) 获取
 
 运行
 ```
