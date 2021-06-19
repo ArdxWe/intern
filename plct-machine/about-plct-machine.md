@@ -210,7 +210,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-[zfinx_dp64.elf](./test/zfinx/zfinx/zfinx_dp64.elf)
+[zfinx_dp64.elf](./test/zfinx/zfinx_dp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp64.elf
 fadd 3.000000 is 3.000000
