@@ -9,15 +9,15 @@
 
 支持运行以下扩展的`RISCV`可执行文件:
 
-- [P扩展](https://github.com/romanheros/qemu/tree/packed-upstream-v1)
+- P扩展
 
-- [K扩展](https://github.com/isrc-cas/plct-qemu/tree/plct-k-dev)
+- [K扩展](https://github.com/riscv/riscv-crypto)
 
-- [B扩展](https://github.com/sifive/qemu/tree/rvb-upstream-v6)
+- [B扩展](https://github.com/riscv/riscv-bitmanip)
 
-- [Zfinx扩展](https://github.com/isrc-cas/plct-qemu/tree/plct-zfinx-dev)
+- [Zfinx扩展](https://github.com/riscv/riscv-zfinx)
 
-- [RVV1.0](https://github.com/sifive/qemu/tree/rvv-1.0-upstream-v7-vfredosum)
+- [RVV1.0](https://github.com/riscv/riscv-v-spec)
 
 ## 构建
 
@@ -46,9 +46,9 @@ $ ./qemu-riscv32 -cpu plct-u32 <your elf>
 
 ## 使用
 
-针对不同的扩展，我们需要在执行的时候添加一些选项(以64位,`QEMU`用户态为例)
+针对不同的扩展，我们需要在运行时添加一些选项(以64位,`QEMU`用户态为例)
  
-当然也可以在Linux下执行，这时需要用9p来做文件映射， 将本地文件映射到Linux下
+当然也可以在Linux下执行，这时需要用9p将本地文件映射到Linux下
 
 
 `P` 扩展:
@@ -92,7 +92,7 @@ $ ./qemu-riscv32 -cpu plct-u32,x-v=true <your elf>
 $ git clone https://github.com/riscv/riscv-crypto.git
 $ cd riscv-crypto
 $ export RISCV_ARCH=riscv64-unknown-elf
-$ source bin/conf.sh
+$ source ./bin/conf.sh
 $ ./tools/start-from-scratch.sh
 ```
 
@@ -270,7 +270,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-[zfinx_dp64.elf`](./test/zfinx/zfinx_dp64.elf)
+[zfinx_dp64.elf](./test/zfinx/zfinx_dp64.elf)
 ```
 $ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp64.elf
 fadd 3.000000 is 3.000000
