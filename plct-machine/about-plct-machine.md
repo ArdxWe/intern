@@ -52,7 +52,7 @@ $ ./qemu-riscv32 -cpu plct-u32 <your elf>
 
 `P` 扩展:
  ```
- $ ./qemu-riscv64 -cpu plct-u64,x-p=true,Zp64=true,pext_spec=v0.9.2 <your elf>
+ $ ./qemu-riscv64 -cpu plct-u64，x-p=true,Zpsfoperand=true,pext_spec=v0.9.4 <your elf>
  ```
 
  `K` 扩展:
@@ -119,280 +119,112 @@ add   result: 0x300000009
 result OK !!!
 ```
 
-### `K` 和 `B`
+### `K`
 
-
-
-想要去获得`K`和`B`扩展可执行文件， 我们需要构建`K`扩展工具链
-
+获取 `toolchain`
 ```
 $ git clone https://github.com/riscv/riscv-crypto.git
-```
-
-进入存储库
-
-```
 $ cd riscv-crypto
-```
-
-添加临时环境变量
-
-```
 $ export RISCV_ARCH=riscv64-unknown-elf
-```
-
-执行构建`K`扩展工具链脚本,这个过程可能需要1个小时左右
-
-```
 $ source bin/conf.sh
 $ ./tools/start-from-scratch.sh
 ```
 
-生成的可执行文件在 `./build` 下
-
+为了运行 benchmark 需要执行
 ```
-$ ls build  
-riscv64-unknown-elf  riscv-pk                      riscv-pk-riscv64-unknown-elf
-riscv-isa-sim        riscv-pk-riscv32-unknown-elf  toolchain
+$ source bin/conf.sh
+$ git submodule update --init extern/riscv-arch-test
 ```
 
-下载测试仓库
-
+#### RV64
+修改 benchmarks/common.mk
 ```
-$ git clone https://github.com/rvkrypto/rvkrypto-fips
-```
-
-进入测试仓库
-
-```
-$ cd rvkrypto-fips
-```
-
-修改`test_main.c`文件，删除`test_gcm`函数
-```
-$ cat test_main.c
-//	test_main.c
-//	2021-02-13	Markku-Juhani O. Saarinen <mjos@pqshield();om>
-//	Copyright (c) 2021, PQShield Ltd. All rights reserved.
-
-//	=== Main driver for the algorithm tests.
-
-#include "rvkintrin.h"
-#include "test_rvkat.h"
-
-//	algorithm tests
-
-int test_aes();		//	test_aes.c
-// int test_gcm();		//	test_gcm.c
-int test_sha2();	//	test_sha2.c
-int test_sha3();	//	test_sha3.c
-int test_sm3();		//	test_sm3.c
-int test_sm4();		//	test_sm4.c
-
-//	stub main: run unit tests
-
-int main()
-{
-	int fail = 0;
-
-	fail += test_aes();
-	// fail += test_gcm();
-	fail += test_sha2();
-	fail += test_sha3();
-	fail += test_sm3();
-	fail += test_sm4();
-
-	if (fail) {
-		rvkat_info("RVKAT self-test finished: FAIL (there were errors)");
-	} else {
-		rvkat_info("RVKAT self-test finished: PASS (no errors)");
-	}
-
-	return fail;
-}
+$ cd benchmarks
+$ git diff .
+ diff --git a/benchmarks/common.mk b/benchmarks/common.mk
+index 21a4338..7fb6cd2 100644
+--- a/benchmarks/common.mk
++++ b/benchmarks/common.mk
+@@ -135,8 +135,7 @@ $(call map_dis,${1},${3}) : $(call map_elf,${1},${3})
+ 
+ $(call map_run_py,${1},-${3}) : $(call map_elf,${1},${3})
+        @mkdir -p $(dir $(call map_run_py,${1},${3}))
+-       $(SPIKE) --isa=$(CONF_ARCH_SPIKE) $(PK) $(call map_elf,${1},${3}) > $${@}
+-       sed -i "s/^bbl loader/#/" $${@}
++       /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-k=true,x-b=true $(call map_elf,${1},${3}) > $${@}
 ```
 
-在repo根目录下创建`test`目录
-
+运行
 ```
-$ mkdir test
+$ pip3 install pycrypto
+$ make all CONFIG=rv64-zscrypto
+$ make run CONFIG=rv64-zscrypto
+...
+AES 128 Test 0 encrypt failed.
+key == b'2b7e151628aed2a6abf7158809cf4f3c'
+rk  == b'2b7e151628aed2a6abf7158809cf4f3c6a81188328aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c6a81188328aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c6a81188328aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c6a81188328aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c6a81188328aed2a6abf7158809cf4f3c2b7e151628aed2a6abf7158809cf4f3c'
+pt  == b'3243f6a8885a308d313198a2e0370734'
+ct  == b'0470c1bf16d094f75092bab604cb340d'
+    != b'3925841d02dc09fbdc118597196a0b32'
+make: *** [test/Makefile.in:45: run-test-aes_128_zscrypto_rv64] Error 1
 ```
+`k` RV64还有点问题
 
-创建`q64.mk`配置文件路径(会向`test`目录写入文件)
-
+#### RV32
+修改 benchmarks/common.mk
 ```
-$ vim q64.mk
-$ cat q64.mk
-#	rv64.mk
-#	2021-02-14	Markku-Juhani O. Saarinen <mjos@pqshield.com>
-#   Copyright (c) 2021, PQShield Ltd.  All rights reserved.
-
-#	===	Cross-compile for RV64 target, run with spike emulator.
-
-#	(lacking K flag here)
-CFLAGS	+=	-march=rv64imafdc -mabi=lp64d
-
-#	toolchai
-XCHAIN	=	/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-
-objdump = objdump -d
-
-QEMU    = /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-k=true,x-b=true -d in_asm
-
-#	default target
-all:	qemu	
-
-#	include main makefile
-include	Makefile
-
-#	execution target (has b here)
-qemu:	$(XBIN)
-	$(QEMU) ./$(XBIN) 2>test/64.asm
-	$(XCHAIN)$(objdump) ./$(XBIN) >test/64.asm.ref
-
+$ cd benchmarks
+$ git diff .
+diff --git a/benchmarks/common.mk b/benchmarks/common.mk
+index 21a4338..4f20687 100644
+--- a/benchmarks/common.mk
++++ b/benchmarks/common.mk
+@@ -135,8 +135,7 @@ $(call map_dis,${1},${3}) : $(call map_elf,${1},${3})
+ 
+ $(call map_run_py,${1},-${3}) : $(call map_elf,${1},${3})
+        @mkdir -p $(dir $(call map_run_py,${1},${3}))
+-       $(SPIKE) --isa=$(CONF_ARCH_SPIKE) $(PK) $(call map_elf,${1},${3}) > $${@}
+-       sed -i "s/^bbl loader/#/" $${@}
++       /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv32 -cpu plct-u32,x-k=true,x-b=true $(call map_elf,${1},${3}) > $${@}
+ 
+ TARGETS += $(call map_elf,${1},${3})
+ TARGETS += $(call map_dis,${1},${3})
 ```
 
-这里可以直接复制我这里给出的`q64.mk`，但要注意：
-
-- `XCHAIN`应该更改为你电脑的上文生成的k扩展工具链对应的gcc可执行文件的路径
-- `QEMU`应该设置为我们这个版本编译生成的可执行文件路径
-- 不要再做任何改动
-
-执行测试
-
+运行
 ```
-$ make -f q64.mk
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_sha3.c -o test_sha3.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_sha2.c -o test_sha2.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_sm4.c -o test_sm4.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_gcm.c -o test_gcm.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_rvkat_sio.c -o test_rvkat_sio.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_sm3.c -o test_sm3.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_aes.c -o test_aes.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c rvk_emu.c -o rvk_emu.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c test_main.c -o test_main.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sm4/sm4_rvk.c -o sm4/sm4_rvk.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c aes/aes_rvk32.c -o aes/aes_rvk32.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c aes/aes_api.c -o aes/aes_api.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c aes/aes_rvk64.c -o aes/aes_rvk64.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c aes/aes_otf_rvk64.c -o aes/aes_otf_rvk64.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c gcm/gcm_gfmul_rv32.c -o gcm/gcm_gfmul_rv32.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c gcm/gcm_gfmul_rv64.c -o gcm/gcm_gfmul_rv64.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c gcm/gcm_api.c -o gcm/gcm_api.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sm3/sm3_api.c -o sm3/sm3_api.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sm3/sm3_cf256_rvk.c -o sm3/sm3_cf256_rvk.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sha3/sha3_api.c -o sha3/sha3_api.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sha3/sha3_f1600_rvb64.c -o sha3/sha3_f1600_rvb64.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sha3/sha3_f1600_rvb32.c -o sha3/sha3_f1600_rvb32.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sha2/sha2_cf256_rvk.c -o sha2/sha2_cf256_rvk.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sha2/sha2_cf512_rvk32.c -o sha2/sha2_cf512_rvk32.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sha2/sha2_cf512_rvk64.c -o sha2/sha2_cf512_rvk64.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -c sha2/sha2_api.c -o sha2/sha2_api.o
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-gcc  -march=rv64imafdc -mabi=lp64d -Wall -Wextra -O2 -g -I.  -DRVK_ALGTEST_VERBOSE_SIO=1 -o xtest test_sha3.o test_sha2.o test_sm4.o test_gcm.o test_rvkat_sio.o test_sm3.o test_aes.o rvk_emu.o test_main.o sm4/sm4_rvk.o aes/aes_rvk32.o aes/aes_api.o aes/aes_rvk64.o aes/aes_otf_rvk64.o gcm/gcm_gfmul_rv32.o gcm/gcm_gfmul_rv64.o gcm/gcm_api.o sm3/sm3_api.o sm3/sm3_cf256_rvk.o sha3/sha3_api.o sha3/sha3_f1600_rvb64.o sha3/sha3_f1600_rvb32.o sha2/sha2_cf256_rvk.o sha2/sha2_cf512_rvk32.o sha2/sha2_cf512_rvk64.o sha2/sha2_api.o  
-/home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-k=true,x-b=true -d in_asm ./xtest 2>test/64.asm
-[INFO] === AES64 ===
-[PASS] AES-128 Enc 69C4E0D86A7B0430D8CDB78070B4C55A
-[PASS] AES-128 Dec 00112233445566778899AABBCCDDEEFF
-[PASS] AES-192 Enc DDA97CA4864CDFE06EAF70A0EC0D7191
-[PASS] AES-192 Dec 00112233445566778899AABBCCDDEEFF
-[PASS] AES-256 Enc 8EA2B7CA516745BFEAFC49904B496089
-[PASS] AES-256 Dec 00112233445566778899AABBCCDDEEFF
-[PASS] AES-128 Enc 3AD77BB40D7A3660A89ECAF32466EF97
-[PASS] AES-128 Dec 6BC1BEE22E409F96E93D7E117393172A
-[PASS] AES-192 Enc 974104846D0AD3AD7734ECB3ECEE4EEF
-[PASS] AES-192 Dec AE2D8A571E03AC9C9EB76FAC45AF8E51
-[PASS] AES-256 Enc B6ED21B99CA6F4F9F153E7B1BEAFED1D
-[PASS] AES-256 Dec 30C81C46A35CE411E5FBC1191A0A52EF
-[INFO] === AES64 / On-the-fly keying ===
-[PASS] AES-128 Enc 69C4E0D86A7B0430D8CDB78070B4C55A
-[PASS] AES-128 Dec 00112233445566778899AABBCCDDEEFF
-[PASS] AES-192 Enc DDA97CA4864CDFE06EAF70A0EC0D7191
-[PASS] AES-192 Dec 00112233445566778899AABBCCDDEEFF
-[PASS] AES-256 Enc 8EA2B7CA516745BFEAFC49904B496089
-[PASS] AES-256 Dec 00112233445566778899AABBCCDDEEFF
-[PASS] AES-128 Enc 3AD77BB40D7A3660A89ECAF32466EF97
-[PASS] AES-128 Dec 6BC1BEE22E409F96E93D7E117393172A
-[PASS] AES-192 Enc 974104846D0AD3AD7734ECB3ECEE4EEF
-[PASS] AES-192 Dec AE2D8A571E03AC9C9EB76FAC45AF8E51
-[PASS] AES-256 Enc B6ED21B99CA6F4F9F153E7B1BEAFED1D
-[PASS] AES-256 Dec 30C81C46A35CE411E5FBC1191A0A52EF
-[INFO] === SHA2-256 using sha2_cf256_rvk() ===
-[PASS] SHA2-256 BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD
-[PASS] SHA2-224 03842600C86F5CD60C3A2147A067CB962A05303C3488B05CB45327BD
-[PASS] SHA2-256 E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
-[PASS] SHA2-256 6595A2EF537A69BA8583DFBF7F5BEC0AB1F93CE4C8EE1916EFF44A93AF5749C4
-[PASS] SHA2-256 CFB88D6FAF2DE3A69D36195ACEC2E255E2AF2B7D933997F348E09F6CE5758360
-[PASS] SHA2-256 42E61E174FBB3897D6DD6CEF3DD2802FE67B331953B06114A65C772859DFC1AA
-[PASS] SHA2-256 3C593AA539FDCDAE516CDF2F15000F6634185C88F505B39775FB9AB137A10AA2
-[INFO] === SHA2-512 using sha2_cf512_rvk64() ===
-[PASS] SHA2-512 DDAF35A193617ABACC417349AE20413112E6FA4E89A97EA20A9EEEE64B55D39A2192992A274FC1A836BA3C23A3FEEBBD454D4423643CE80E2A9AC94FA54CA49F
-[PASS] SHA2-512 8E959B75DAE313DA8CF4F72814FC143F8F7779C6EB9F7FA17299AEADB6889018501D289E4900F7E4331B99DEC4B5433AC7D329EEB6DD26545E96E55B874BE909
-[PASS] SHA2-384 38B060A751AC96384CD9327EB1B1E36A21FDB71114BE07434C0CC7BF63F6E1DA274EDEBFE76F65FBD51AD2F14898B95B
-[PASS] SHA2-384 E7089D72945CEF851E689B4409CFB63D135F0B5CDFB0DAC6C3A292DD70371AB4B79DA1997D7992906AC7213502662920
-[INFO] === SHA3 using sha3_f1600_rvb64() ===
-[PASS] KECCAK-P 1581ED5252B07483009456B676A6F71D7D79518A4B1965F7450576D1437B47206A60F6F3A48B5FD193D48D7C4F14D7A13FFD38519693D130BEE31B9572947E485A7ADACB58A8F30C887FB19B384EE52F8F269F0DDE38730B7F6D258BF5DFEF556A3E2CEB943E35C8111F908C94F62A2EA69D30CA0CDE73E8E2314D946CC2AFF7D715C48C80EAF5A0CFD83E7E4331F55321D2A4433B1F7F7785E999B43CA60CFD3023D1C5C055C0D4DFA7E0A68AE52FA7A348997C93F51A42880834713010165E334A7E293AF453D1
-[PASS] SHA3-224 6B4E03423667DBB73B6E15454F0EB1ABD4597F9A1B078E3F5B5A6BC7
-[PASS] SHA3-256 64537B87892835FF0963EF9AD5145AB4CFCE5D303A0CB0415B3B03F9D16E7D6B
-[PASS] SHA3-384 D1C0FA85C8D183BEFF99AD9D752B263E286B477F79F0710B010317017397813344B99DAF3BB7B1BC5E8D722BAC85943A
-[PASS] SHA3-512 6E8B8BD195BDD560689AF2348BDC74AB7CD05ED8B9A57711E9BE71E9726FDA4591FEE12205EDACAF82FFBBAF16DFF9E702A708862080166C2FF6BA379BC7FFC2
-[PASS] SHAKE128 9DE6FFACF3E59693A3DE81B02F7DB77A
-[PASS] SHAKE256 89F2373E131A899B4BA27F6DA606716A5E289FD530AE066BB8B11DC023DACBD6
-[PASS] SHAKE128 43E41B45A653F2A5C4492C1ADD544512DDA2529833462B71A41A45BE97290B6F
-[PASS] SHAKE256 AB0BAE316339894304E35877B0C28A9B1FD166C796B9CC258A064A8F57E27F2A
-[PASS] SHAKE128 44C9FB359FD56AC0A9A75A743CFF6862F17D7259AB075216C0699511643B6439
-[PASS] SHAKE256 6A1A9D7846436E4DCA5728B6F760EEF0CA92BF0BE5615E96959D767197A0BEEB
-[INFO] === SM3 ===
-[PASS] SM3-256 66C7F0F462EEEDD9D1F2D46BDC10E4E24167C4875CF2F7A2297DA02B8F4BA8E0
-[PASS] SM3-256 DEBE9FF92275B8A138604889C18E5A4D6FDB70E5387E5765293DCBA39C0C5732
-[INFO] === SM4 ===
-[PASS] SM4 Encrypt 681EDF34D206965E86B3E94F536E4246
-[PASS] SM4 Decrypt 0123456789ABCDEFFEDCBA9876543210
-[PASS] SM4 Encrypt F766678F13F01ADEAC1B3EA955ADB594
-[PASS] SM4 Decrypt 000102030405060708090A0B0C0D0E0F
-[PASS] SM4 Encrypt 865DE90D6B6E99273E2D44859D9C16DF
-[PASS] SM4 Decrypt D294D879A1F02C7C5906D6C2D0C54D9F
-[PASS] SM4 Encrypt 94CFE3F59E8507FEC41DBE738CCD53E1
-[PASS] SM4 Decrypt A27EE076E48E6F389710EC7B5E8A3BE5
-[INFO] RVKAT self-test finished: PASS (no errors)
-/home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/riscv64-unknown-elf/bin/riscv64-unknown-elf-objdump -d ./xtest >test/64.asm.ref
+$ pip3 install pycrypto
+$ make all CONFIG=rv32-zscrypto
+$ make run CONFIG=rv32-zscrypto
+...
+aes_256_zscrypto_rv32.py
+python3 /home/ardxwe/PLCT/Src/k-toolchain/riscv-crypto/build/benchmarks/rv32-zscrypto/log/test/test_block_aes_256--aes_256_zscrypto_rv32.py
+aes_256_zscrypto_rv32 AES 256 Test passed. enc: 209332, dec: 210708, kse: 155938, ksd: 106084, 
 ```
 
-### `Zfinx`
 
-应该使用 `Zfinx` 版本的`gcc`去编译[test-zfinx.c](./test/test-zfinx.c)
+### Zfinx
 
-单精度浮点
+`Zfinx` 版本的可执行测试文件在 `test/zfinx` 目录
 
+- 选项 `Zfinx=true` 可以执行以 `Zfinx` 开头的文件 `Zfinx_fp64.elf` `Zfinx_dp64.elf`
+
+- 选项 `Zdinx=true` 可以执行以 `Zfinx` 和 `Zdinx` 开头的可执行文件 `Zfinx_fp64.elf` `Zfinx_dp64.elf` `Zdinx_fp64.elf` `Zdinx_dp64.elf`
+
+#### `zfinx` 选项对于`RV64`
+
+`zfinx_fp64.elf`
 ```
-$ git clone https://github.com/pz9115/riscv-gcc
-$ cd riscv-gcc
-$ ./configure --prefix=/opt/rv64zfinx/ --with-arch=rv64imaczdinxzfinx --with-abi=lp64 --with-multilib-generator="rv64imaczdinxzfinx-lp64--"
-$ make
-$ make install
-```
-
-双精度浮点
-
-```
-$ git clone https://github.com/pz9115/riscv-gcc
-$ cd riscv-gcc
-$ ./configure --prefix=/opt/rv64zfinx/ --with-arch=rv64imaczdinxzfinx --with-abi=lp64 --with-abi=lp64 --with-multilib-generator="rv64imaczdinxzfinx-lp64--"
-$ make
-$ make install
-```
-
-执行
-
-```
-$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,Zfinx=true /home/ardxwe/PLCT/Code/fp64.elf       
-fadd 3.000000 is 3.0
-fsub -1.000000 is -1.0
-fmul 2.000000 is 2.0
-fdiv 0.500000 is 0.5
-fneg -1.000000 is -1.0
-fabs 1.000000 is 1.0
-fsqrt 1.000000 is 1.0
-fmax 2.000000 is 2.0
-fmin 1.000000 is 1.0
+$ ./qemu-riscv64 -cpu plct-u64,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp64.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
 feq 0 is 0
 flt 1 is 1
 fle 1 is 1
@@ -402,12 +234,337 @@ fcvt.wu.s 1 is 1
 fcvt.w.s 1 is 1
 fcvt.lu.s 1 is 1
 fcvt.l.s 1 is 1
-fcvt.d.s 1.000000 is 1.0
-fcvt.s.wu 1.000000 is 1.0
-fcvt.s.w 1.000000 is 1.0
-fcvt.s.lu 1.000000 is 1.0
-fcvt.s.l 1.000000 is 1.0
-fcvt.s.d 1.000000 is 1.0
+fcvt.d.s 1.000000 is 1.000000
+fcvt.s.wu 1.000000 is 1.000000
+fcvt.s.w 1.000000 is 1.000000
+fcvt.s.lu 1.000000 is 1.000000
+fcvt.s.l 1.000000 is 1.000000
+fcvt.s.d 1.000000 is 1.000000
+```
+
+`zfinx_dp64.elf`
+```
+$ ./qemu-riscv64 -cpu plct-u64,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp64.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.d 1 is 1
+fcvt.w.d 1 is 1
+fcvt.lu.d 1 is 1
+fcvt.l.d 1 is 1
+fcvt.s.d 1.000000 is 1.000000
+fcvt.d.wu 1.000000 is 1.000000
+fcvt.d.w 1.000000 is 1.000000
+fcvt.d.lu 1.000000 is 1.000000
+fcvt.d.l 1.000000 is 1.000000
+fcvt.d.s 1.000000 is 1.000000
+```
+
+#### `zdinx` 选项对于 `RV64`
+
+`zfinx_fp64.elf`
+```
+$ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp64.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.s 1 is 1
+fcvt.w.s 1 is 1
+fcvt.lu.s 1 is 1
+fcvt.l.s 1 is 1
+fcvt.d.s 1.000000 is 1.000000
+fcvt.s.wu 1.000000 is 1.000000
+fcvt.s.w 1.000000 is 1.000000
+fcvt.s.lu 1.000000 is 1.000000
+fcvt.s.l 1.000000 is 1.000000
+fcvt.s.d 1.000000 is 1.000000
+```
+
+`zfinx_dp64.elf`
+```
+$ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp64.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.d 1 is 1
+fcvt.w.d 1 is 1
+fcvt.lu.d 1 is 1
+fcvt.l.d 1 is 1
+fcvt.s.d 1.000000 is 1.000000
+fcvt.d.wu 1.000000 is 1.000000
+fcvt.d.w 1.000000 is 1.000000
+fcvt.d.lu 1.000000 is 1.000000
+fcvt.d.l 1.000000 is 1.000000
+fcvt.d.s 1.000000 is 1.000000
+```
+
+`zdinx_fp64.elf`
+```
+$ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_fp64.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.s 1 is 1
+fcvt.w.s 1 is 1
+fcvt.lu.s 1 is 1
+fcvt.l.s 1 is 1
+fcvt.d.s 1.000000 is 1.000000
+fcvt.s.wu 1.000000 is 1.000000
+fcvt.s.w 1.000000 is 1.000000
+fcvt.s.lu 1.000000 is 1.000000
+fcvt.s.l 1.000000 is 1.000000
+fcvt.s.d 1.000000 is 1.000000
+```
+
+`zdinx_dp64.elf`
+```
+$ ./qemu-riscv64 -cpu plct-u64,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_dp64.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.d 1 is 1
+fcvt.w.d 1 is 1
+fcvt.lu.d 1 is 1
+fcvt.l.d 1 is 1
+fcvt.s.d 1.000000 is 1.000000
+fcvt.d.wu 1.000000 is 1.000000
+fcvt.d.w 1.000000 is 1.000000
+fcvt.d.lu 1.000000 is 1.000000
+fcvt.d.l 1.000000 is 1.000000
+fcvt.d.s 1.000000 is 1.000000
+```
+
+#### `zfinx` 选项对于 `RV32`
+
+`zfinx_fp32.elf`
+```
+$ ./qemu-riscv32 -cpu plct-u32,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp32.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.s 1 is 1
+fcvt.w.s 1 is 1
+fcvt.lu.s 1 is 1
+fcvt.l.s 1 is 1
+fcvt.d.s 1.000000 is 1.000000
+fcvt.s.wu 1.000000 is 1.000000
+fcvt.s.w 1.000000 is 1.000000
+fcvt.s.lu 1.000000 is 1.000000
+fcvt.s.l 1.000000 is 1.000000
+fcvt.s.d 1.000000 is 1.000000
+```
+
+`zfinx_dp32.elf`
+```
+$ ./qemu-riscv32 -cpu plct-u32,Zfinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp32.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.d 1 is 1
+fcvt.w.d 1 is 1
+fcvt.lu.d 1 is 1
+fcvt.l.d 1 is 1
+fcvt.s.d 1.000000 is 1.000000
+fcvt.d.wu 1.000000 is 1.000000
+fcvt.d.w 1.000000 is 1.000000
+fcvt.d.lu 1.000000 is 1.000000
+fcvt.d.l 1.000000 is 1.000000
+fcvt.d.s 1.000000 is 1.000000
+```
+
+#### `zdinx` 选项对于 `RV32`
+
+`zfinx_fp32.elf`
+```
+$ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_fp32.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.s 1 is 1
+fcvt.w.s 1 is 1
+fcvt.lu.s 1 is 1
+fcvt.l.s 1 is 1
+fcvt.d.s 1.000000 is 1.000000
+fcvt.s.wu 1.000000 is 1.000000
+fcvt.s.w 1.000000 is 1.000000
+fcvt.s.lu 1.000000 is 1.000000
+fcvt.s.l 1.000000 is 1.000000
+fcvt.s.d 1.000000 is 1.000000
+```
+
+`zfinx_dp32.elf`
+```
+$ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zfinx_dp32.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.d 1 is 1
+fcvt.w.d 1 is 1
+fcvt.lu.d 1 is 1
+fcvt.l.d 1 is 1
+fcvt.s.d 1.000000 is 1.000000
+fcvt.d.wu 1.000000 is 1.000000
+fcvt.d.w 1.000000 is 1.000000
+fcvt.d.lu 1.000000 is 1.000000
+fcvt.d.l 1.000000 is 1.000000
+fcvt.d.s 1.000000 is 1.000000
+```
+
+`zdinx_fp32.elf`
+```
+$ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_fp32.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.s 1 is 1
+fcvt.w.s 1 is 1
+fcvt.lu.s 1 is 1
+fcvt.l.s 1 is 1
+fcvt.d.s 1.000000 is 1.000000
+fcvt.s.wu 1.000000 is 1.000000
+fcvt.s.w 1.000000 is 1.000000
+fcvt.s.lu 1.000000 is 1.000000
+fcvt.s.l 1.000000 is 1.000000
+fcvt.s.d 1.000000 is 1.000000
+```
+
+`zdinx_dp32.elf`
+```
+$ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_dp32.elf
+fadd 3.000000 is 3.000000
+fsub -1.000000 is -1.000000
+fmul 2.000000 is 2.000000
+fdiv 0.500000 is 0.500000
+fneg -1.000000 is -1.000000
+fabs 1.000000 is 1.000000
+fsqrt 1.000000 is 1.000000
+fmax 2.000000 is 2.000000
+fmin 1.000000 is 1.000000
+feq 0 is 0
+flt 1 is 1
+fle 1 is 1
+fgt 0 is 0
+fge 0 is 0
+fcvt.wu.d 1 is 1
+fcvt.w.d 1 is 1
+fcvt.lu.d 1 is 1
+fcvt.l.d 1 is 1
+fcvt.s.d 1.000000 is 1.000000
+fcvt.d.wu 1.000000 is 1.000000
+fcvt.d.w 1.000000 is 1.000000
+fcvt.d.lu 1.000000 is 1.000000
+fcvt.d.l 1.000000 is 1.000000
+fcvt.d.s 1.000000 is 1.000000
 ```
 
 ### `RVV1.0`
@@ -428,13 +585,50 @@ $ mkdir build
 $ cd build
 $ cmake -DLLVM_TARGETS_TO_BUILD="X86;RISCV" -DLLVM_ENABLE_PROJECTS=clang -DCMAKE_INSTALL_PREFIX=./install -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ../llvm
 ```
-生成的可执行文件目录在`./install`
+生成的可执行文件在`./install`
+
+构建工具链
+
+```
+$ git clone https://github.com/riscv/riscv-gnu-toolchain
+```
+
+或许在这之前需要安装一些软件包
+
+Ubuntu
+```
+$ sudo apt-get install autoconf automake autotools-dev curl python3 libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev
+```
+
+Fedora/CentOS/RHEL OS
+```
+$ sudo yum install autoconf automake python3 libmpc-devel mpfr-devel gmp-devel gawk  bison flex texinfo patchutils gcc gcc-c++ zlib-devel expat-devel
+```
+
+Arch Linux
+```
+$ pacman -Syyu autoconf automake curl python3 mpc mpfr gmp gawk base-devel bison flex texinfo gperf libtool patchutils bc zlib expat
+```
+
+OS X
+```
+$ brew install python3 gawk gnu-sed gmp mpfr libmpc isl zlib expat
+```
+
+构建
+```
+$ cd riscv-gnu-toolchain
+$ ./configure --prefix=/opt/riscv
+$ make
+```
 
 下载测试代码仓库
 
 ```
 $ git clone -b rvv-1.0 https://github.com/RALC88/riscv-vectorized-benchmark-suite.git
 ```
+
+#### _axpy
 
 进入目录
 
@@ -444,58 +638,245 @@ $ cd riscv-vectorized-benchmark-suite/_axpy
 
 修改 `Makefile`
 
+需要修改 `GCC_TOOLCHAIN_DIR` 和 `LLVM` 这两个变量，替换成上面我们安装的位置
+
 ```
-$ vim Makefile
 $ cat Makefile
-#makefile
-GCC_TOOLCHAIN_DIR := /home/ardxwe/PLCT/Bin/riscv64/
-SYSROOT_DIR := $(GCC_TOOLCHAIN_DIR)/riscv64-unknown-elf
-
-LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install/
-SPIKE := spike
-PK := pk
-
-target = bin/rvv-test
-
-serial:
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR)  -c -o src/axpy.o src/axpy.c
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR) -c -o src/main.o src/main.c
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf  -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR) -c -o src/utils.o src/utils.c
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR)  -O2 -o $(target) src/*.o -lm
-
-vector:
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf -DUSE_RISCV_VECTOR  -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR)  -c -o src/utils.o src/utils.c
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf -DUSE_RISCV_VECTOR -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR)  -c -o src/axpy.o src/axpy.c
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf -DUSE_RISCV_VECTOR  -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR) -c -o src/main.o src/main.c
-	${LLVM}/bin/clang  -Wall --target=riscv64-unknown-elf -DUSE_RISCV_VECTOR -march=rv64gcv1p0 -menable-experimental-extensions -O2  --sysroot=$(SYSROOT_DIR) --gcc-toolchain=$(GCC_TOOLCHAIN_DIR) -o $(target) src/*.o -lm  
-	
-runspike :
-	$(SPIKE) --isa=rv64gcv $(PK) $(target) 256
+...
+GCC_TOOLCHAIN_DIR := /opt/riscv
+LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
+...
 ```
-
-注意
- - `GCC_TOOLCHAIN_DIR`  `SYSROOT_DIR` 和 `LLVM` 应该改为本机目录，使用普通版本的工具链即可
- - 不要修改其他
 
 编译
 ```
 $ make vector
 ```
+
 可执行文件会生成在`./bin`目录
 
-使用 此分支的`QEMU`可执行文件运行测试
+运行(这里 `qemu` 和  `rvv-test` 需要替换为对应的路径)
 
 ```
-$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_axpy/bin/rvv-test
-init_vector time: 0.000530
+$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_axpy/bin/rvv-test 256
+init_vector time: 0.002208
 doing reference axpy
-axpy_reference time: 0.000201
+axpy_reference time: 0.001929
 doing vector axpy
-axpy_intrinsics time: 0.016320
+axpy_intrinsics time: 0.018190
 done
 Result ok !!!
 ```
 
+#### _blackscholes
+
+进入目录
+
+```
+$ cd ../blackscholes
+```
+
+修改 `Makefile`
+
+```
+$ cat Makefile
+...
+GCC_TOOLCHAIN_DIR := /opt/riscv
+LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
+...
+```
+
+运行
+
+```
+$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_blackscholes/bin/rvv-test 1 ./input/in_64K.input prices.txt
+50.000000000000000000
+50.000000000000000000
+50.000000000000000000
+Num Errors: 0
+...
+```
+
+#### _canneal
+
+进入目录
+
+```
+cd ../canneal
+```
+
+修改 `Makefile`
+
+```
+$ cat Makefile
+...
+GCC_TOOLCHAIN_DIR := /opt/riscv
+LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
+...
+```
+
+编译
+```
+$ make vector
+```
+
+运行
+```
+$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_canneal/bin/canneal_vector.exe 1 100 300 input/100.nets 8
+PARSEC Benchmark Suite
+Threadcount: 1
+100 swaps per temperature step
+start temperature: 300
+netlist filename: input/100.nets
+number of temperature steps: 8
+locs created
+locs assigned
+netlist created. 100 elements.
+
+
+Initialization took 0.03738200 secs   
+
+
+thread.Run() 0.00557000 secs   
+Final routing is: 4141
+```
+
+#### _particlefilter
+
+进入目录
+
+```
+$ cd ../_particlefilter
+```
+
+修改 `Makefile`
+
+```
+GCC_TOOLCHAIN_DIR := /opt/riscv
+LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
+...
+```
+
+编译
+```
+$ make vector
+```
+
+运行
+```
+$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_particlefilter/bin/rvv-test -x 128 -y 128 -z 2 -np 256
+VIDEO SEQUENCE TOOK 0.018011
+TIME TO GET NEIGHBORS TOOK: 0.000366
+TIME TO GET WEIGHTSTOOK: 0.000204
+TIME TO SET ARRAYS TOOK: 0.003353
+TIME TO SET ERROR TOOK: 0.001447
+TIME TO GET LIKELIHOODS TOOK: 0.002196
+TIME TO GET EXP TOOK: 0.000384
+TIME TO SUM WEIGHTS TOOK: 0.000168
+TIME TO NORMALIZE WEIGHTS TOOK: 0.000064
+TIME TO MOVE OBJECT TOOK: 0.000145
+XE: 64.870252
+YE: 64.631368
+1.075158
+TIME TO CALC CUM SUM TOOK: 0.000952
+TIME TO CALC U TOOK: 0.000095
+TIME TO CALC NEW ARRAY X AND Y TOOK: 0.000949
+TIME TO RESET WEIGHTS TOOK: 0.000173
+PARTICLE FILTER TOOK 0.014493
+ENTIRE PROGRAM TOOK 0.032504
+```
+
+#### _pathfinder
+
+进入目录
+
+```
+cd ../_pathfinder
+```
+
+修改 `Makefile`
+```
+GCC_TOOLCHAIN_DIR := /opt/riscv
+LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
+...
+```
+
+编译
+```
+$ make vector
+```
+
+运行
+```
+$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_pathfinder/bin/rvv-test 32 32 out
+cols: 32 rows: 32 
+TIME TO INIT DATA: 0.001433
+NUMBER OF RUNS VECTOR: 100
+TIME TO FIND THE SMALLEST PATH: 0.004888
+52 51 50 52 58 53 54 57 48 56 56 61 61 61 61 54 51 52 56 51 47 49 52 51 54 52 58 57 52 56 55 53 %
+```
+
+#### _streamcluster
+
+进入目录
+```
+$ cd ../_streamcluster
+```
+
+修改 `Makefile`
+```
+GCC_TOOLCHAIN_DIR := /opt/riscv
+LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
+...
+```
+
+编译
+```
+$ make vector
+```
+
+运行
+```
+$ echo >output.txt;
+$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_streamcluster/bin/rvv-test 3 10 128 128 128 10 none output.txt 1
+
+PARSEC Benchmark Suite
+read 128 points
+...
+streamCluster Kernel took 0.51349200 secs
+```
+
+#### _swaptions
+
+进入目录
+```
+$ cd ../_swaptions
+```
+
+修改 `Makefile`
+```
+GCC_TOOLCHAIN_DIR := /opt/riscv
+LLVM := /home/ardxwe/PLCT/Src/rvv-llvm/build/install
+...
+```
+
+运行
+```
+$ /home/ardxwe/PLCT/Src/plct-qemu/build/qemu-riscv64 -cpu plct-u64,x-v=true /home/ardxwe/PLCT/Src/riscv-vectorized-benchmark-suite/_swaptions/bin/rvv-test -ns 8 -sm 512 -nt 1     
+PARSEC Benchmark Suite
+Number of Simulations: 512,  Number of threads: 1 Number of swaptions: 8
+
+
+Swaption Pricing Routine took 0.22827700 secs   
+Swaption 0: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000] 
+Swaption 1: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000] 
+Swaption 2: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000] 
+Swaption 3: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000] 
+Swaption 4: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000] 
+Swaption 5: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000] 
+Swaption 6: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000] 
+Swaption 7: [SwaptionPrice: -0.0000000000 StdError: 0.0000000000]
+```
 测试如此，生成对应扩展的对应文件也是如此
 
 完整的构建，测试视频看这里[bilibili](https://www.bilibili.com/video/BV1Zb4y1Q7oX)
