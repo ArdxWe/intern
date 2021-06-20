@@ -26,6 +26,7 @@
 64位:
 ```
 $ git clone -b plct-machine-dev https://github.com/isrc-cas/plct-qemu.git
+$ cd plct-qemu
 $ mkdir build
 $ cd build
 $ ../configure --target-list=riscv64-linux-user,riscv64-softmmu
@@ -37,6 +38,7 @@ $ ./qemu-riscv64 -cpu plct-u64 <your elf>
 
 ```
 $ git clone -b plct-machine-dev https://github.com/isrc-cas/plct-qemu.git
+$ cd plct-qemu
 $ mkdir build
 $ cd build
 $ ../configure --target-list=riscv32-linux-user,riscv32-softmmu
@@ -477,7 +479,7 @@ fcvt.d.l 1.000000 is 1.000000
 fcvt.d.s 1.000000 is 1.000000
 ```
 
-[zdinx_fp32.elf](./zfinx/zdinx_fp32.elf)
+[zdinx_fp32.elf](./test/zfinx/zdinx_fp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_fp32.elf
 fadd 3.000000 is 3.000000
@@ -506,7 +508,7 @@ fcvt.s.l 1.000000 is 1.000000
 fcvt.s.d 1.000000 is 1.000000
 ```
 
-[zdinx_dp32.elf](./test/zdinx_dp32.elf)
+[zdinx_dp32.elf](./test/zfinx/zdinx_dp32.elf)
 ```
 $ ./qemu-riscv32 -cpu plct-u32,Zdinx=true /home/ardxwe/github/intern/plct-machine/test/zfinx/zdinx_dp32.elf
 fadd 3.000000 is 3.000000
@@ -640,7 +642,7 @@ Result ok !!!
 进入目录
 
 ```
-$ cd ../blackscholes
+$ cd ../_blackscholes
 ```
 
 修改 `Makefile`
