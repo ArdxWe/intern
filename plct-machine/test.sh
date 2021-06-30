@@ -42,11 +42,11 @@ pip3 install pycrypto
 
 git checkout qemu-riscv64
 make all CONFIG=rv64-zscrypto
-make run CONFIG=rv64-zscrypto
+make run CONFIG=rv64-zscrypto >> $RESULT 2>&1
 
 git checkout qemu-riscv32
 make all CONFIG=rv32-zscrypto
-make run CONFIG=rv32-zscrypto
+make run CONFIG=rv32-zscrypto >> $RESULT 2>&1
 
 # Zfinx
 cd $TEST_FOLDER
