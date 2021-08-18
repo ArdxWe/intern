@@ -234,6 +234,13 @@ vector_engine.hh
 - requestGrant: 进行实际操作，判断寄存器个数是否满足需求等
 - dispatch: `sendCommand`接口的实际行为,rename, 分配到临时队列，等待条件满足调用`issue`，执行指令。
 
+vector_rename.hh
+
+- 写寄存器逻辑寄存器与物理寄存器可能不同
+- 空闲寄存器链表 FRL
+- 寄存器映射表 RAT
+
+
 ## 存在的问题
 
 - 具体实现细节
