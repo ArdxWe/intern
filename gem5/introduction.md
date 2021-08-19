@@ -234,12 +234,21 @@ vector_engine.hh
 - requestGrant: 进行实际操作，判断寄存器个数是否满足需求等
 - dispatch: `sendCommand`接口的实际行为,rename, 分配到临时队列，等待条件满足调用`issue`，执行指令。
 
-vector_rename.hh
+## 核心部分
+
+### Vector Renaming
+
+vector_engine.hh
 
 - 写寄存器逻辑寄存器与物理寄存器可能不同
-- 空闲寄存器链表 FRL
-- 寄存器映射表 RAT
+- 空闲寄存器链表 FRL(Free Register List) 存储可用寄存器
+- 寄存器映射表 RAT(Register Alias Table) 存储逻辑寄存器与物理寄存器映射 类似于(page table)
 
+### Reorder Buffer(ROB)
+
+- 允许指令按序提交
+- 一个ROB对应一条指令，存储指令相关信息
+- 指令相应队列存储ROB地址，可以修改ROB内部信息
 
 ## 存在的问题
 
