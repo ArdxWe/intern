@@ -1,5 +1,10 @@
 # How to execute one instruction
 
+content
+
+- How to generate the instruction class
+- Inheritance between instruction classes
+
 ## get code
 
 ```
@@ -8,11 +13,10 @@ $ cd gem5
 $ git reset 1339a1b0801431
 ```
 
-最新: 60c0e02f7d9c1e42c95173e5f9373a56df234c98
+new: 60c0e02f7d9c1e42c95173e5f9373a56df234c98
 
-基于: 1339a1b08014311d4fd443d9a26b632a2438d7f7
+base: 1339a1b08014311d4fd443d9a26b632a2438d7f7
 
-可以得到81个修改的文件，这是作者的所有修改
 
 ## parser and generate
 
