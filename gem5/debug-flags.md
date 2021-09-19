@@ -4,7 +4,7 @@
 ## debug flags
 
 ```c++
-// src/cpu/minor/execute.cc
+// src/cpu/minor/execute.cc 1232
 DPRINTF(CpuVectorIssue,"The Vector Engine could not accept"
                     "the instruction : %s \n",*inst);
 ```
@@ -13,7 +13,7 @@ We could use `--debug-flags=CpuVectorIssue` to get the corresponding output info
 
 Run command I used(build details you could read [readme](https://github.com/RALC88/gem5/blob/develop/src/cpu/vector_engine/README.md)):
 ```
-$ /home/ardxwe/plct/plct-gem5/build/RISCV/gem5.opt --debug-flags=CpuVectorIssue /home/ardxwe/plct/plct-gem5/configs/example/riscv_vector_engine.py --cmd="/home/ardxwe/github/riscv-vectorized-benchmark-suite/_blackscholes/bin/blackscholes_vector.exe 1 /home/ardxwe/github/riscv-vectorized-benchmark-suite/_blackscholes/input/in_256.input output_vector.txt" > output
+$ /home/ardxwe/plct/plct-gem5/build/RISCV/gem5.opt --debug-flags=CpuVectorIssue /home/ardxwe/plct/plct-gem5/configs/example/riscv_vector_engine.py --cmd="/home/ardxwe/github/riscv-vectorized-benchmark-suite/_blackscholes/bin/blackscholes_vector.exe 1 /home/ardxwe/github/riscv-vectorized-benchmark-suite/_blackscholes/input/in_256.input output_vector.txt" > CpuVectorIssue
 ```
 
 The author provides many kinds of debug flags:
@@ -39,8 +39,9 @@ One flag corresponds to one entry.
 ## debug one instruction
 
 pc: 0x1036c
-instruction: vle_v(load from memory)
+instruction: vle_v(load bits from memory)
 ```
+// --debug-flags=CpuVectorIssue
 ...
 2269227500: system.cpu.execute: Vector Instruction Issue to exec:0/21604.306810/784580/2623046.2623046 pc: 0x1036c (vle_v) 
 2269230000: system.cpu.execute: Sending vector isnt to the Vector Engine: 0/21604.306810/784580/2623046.2623046 pc: 0x1036c (vle_v) , pc: 0x   1036C
@@ -55,12 +56,13 @@ For each dynamic DPRINTF execution, three things are printed to stdout.
 - The name of the SimObject that called DPRINTF. This name is usually the Python variable name from the Python config file. However, the name is whatever the SimObject name() function returns. 
 - You see whatever format string you passed to the DPRINTF function.
 
-one instruction lifetime:
+## one instruction lifetime:
 
 issue:
 
 ``` c++
 // 2269227500: system.cpu.execute: Vector Instruction Issue to exec:0/21604.306810/784580/2623046.2623046 pc: 0x1036c (vle_v)
+// src/cpu/mirror/execute.cc 613
 else {
                 DPRINTF(CpuVectorIssue,"Vector Instruction Issue to exec:"
                     "%s \n",*inst);
@@ -75,7 +77,7 @@ else {
 
 request grant to VectorEngineInterface.
 ```c++
-// src/cpu/minor/execute.cc
+// src/cpu/minor/execute.cc 1232
 if (!cpu.ve_interface->requestGrant(vector_insn))
                 {
                     DPRINTF(CpuVectorIssue,"The Vector Engine could not accept"
@@ -98,7 +100,7 @@ if (!cpu.ve_interface->requestGrant(vector_insn))
                         completed_vec_inst = true;
                     });
                 }
-// src/cpu/vector_engine/vector_engine_interface.cc
+// src/cpu/vector_engine/vector_engine_interface.cc 53
 // we use new command: /home/ardxwe/plct/plct-gem5/build/RISCV/gem5.opt --debug-flags=VectorEngineInterface /home/ardxwe/plct/plct-gem5/configs/example/riscv_vector_engine.py --cmd="/home/ardxwe/github/riscv-vectorized-benchmark-suite/_blackscholes/bin/blackscholes_vector.exe 1 /home/ardxwe/github/riscv-vectorized-benchmark-suite/_blackscholes/input/in_256.input output_vector.txt" > VectorEngineInterface
 
 // 2292275000: system.cpu.ve_interface: Resquesting a grant with answer : 1
@@ -114,6 +116,7 @@ VectorEngineInterface::requestGrant(RiscvISA::VectorStaticInst* vinst)
 commit, send to vector engine:
 
 ```c++
+// src/cpu/mirror/execute.cc 1278
 // 2269230000: system.cpu.execute: Sending vector isnt to the Vector Engine: 0/21604.306810/784580/2623046.2623046 pc: 0x1036c (vle_v) , pc: 0x   1036C
 DPRINTF(CpuVectorIssue,"Sending vector isnt to the Vector"
                         " Engine: %s , pc: 0x%8X\n",*inst , pc);
@@ -133,6 +136,7 @@ DPRINTF(CpuVectorIssue,"Sending vector isnt to the Vector"
 send command to vector engine interface:
 
 ```c++
+// src/cpu/vector_engine/vector_engine_interface.cc 64
 // 2292275000: system.cpu.ve_interface: Sending a new command to the vector engine
 void
 VectorEngineInterface::sendCommand(RiscvISA::VectorStaticInst* vinst ,ExecContextPtr& xc ,
@@ -143,15 +147,32 @@ VectorEngineInterface::sendCommand(RiscvISA::VectorStaticInst* vinst ,ExecContex
     vector_engine->dispatch(*vinst,xc,src1,src2,done_callback);
 }
 ```
+callback:
 
+```c++
+// src/cpu/vector_engine/vector_engine.cc 452
+if (insn.isVectorInstMem()) {
+        dependencie_callback();
+        ...
+}
+// src/cpu/mirror/execute.cc 1285
+// 2269230000: system.cpu.execute: The instruction has been hosted by the Vector Engine 0/21604.306810/784580/2623046.2623046 pc: 0x1036c (vle_v) 
+cpu.ve_interface->sendCommand(vector_insn,xc,src1,src2,
+                        [this,inst,vector_insn]() mutable {
+                        DPRINTF(CpuVectorIssue,"The instruction has been "
+                        "hosted by the Vector Engine %s \n",*inst );
+                        completed_vec_inst = true;
+                    });
+```
 set reorder buffer:
 
 ```c++
-// 2269230000: system.cpu.ve_interface.vector_engine.vector_rob: Setting the ROB entry 0  with an old dst 3 
+//src/cpu/vector_engine/vecctor_engine.cc 453
+uint32_t rob_entry = vector_rob->set_rob_entry(
+            vector_dyn_insn->get_renamed_old_dst(), insn.isLoad());
 
-vector_inst_queue->Memory_Queue.push_back(
-            new InstQueue::QueueEntry(insn,vector_dyn_insn,xc,
-                NULL,src1,src2,last_vtype,last_vl));
+// src/cpu/vector_engine/vpu/rob/reorder_buffer.cc 133
+// // 2269230000: system.cpu.ve_interface.vector_engine.vector_rob: Setting the ROB entry 0  with an old dst 3 
 
 ReorderBuffer::set_rob_entry(uint32_t old_dst, bool valid_old_dst)
 {
@@ -180,11 +201,28 @@ ReorderBuffer::set_rob_entry(uint32_t old_dst, bool valid_old_dst)
     return return_tail;
 }
 ```
+push to instruction queue:
+
+```c++
+// src/cpu/vector_engine/vector_engine.cc 456
+vector_inst_queue->Memory_Queue.push_back(
+            new InstQueue::QueueEntry(insn,vector_dyn_insn,xc,
+                NULL,src1,src2,last_vtype,last_vl));
+// src/cpu/vector_engine/vpu/iuuse/queues/inst_queue.cc 342
+// 2269266000: system.cpu.ve_interface.vector_engine.vector_inst_queue: Memory queue Size 1
+// 2269302000: system.cpu.ve_interface.vector_engine.vector_inst_queue: Executed instruction vle_v
+DPRINTF(InstQueue,"Executed instruction %s\n",
+                    Mem_Instruction->insn.getName());
+                DPRINTF(InstQueue,"Memory queue Size %d\n",Memory_Queue.size());
+
+```
 
 ```c++
 // 2269230000: system.cpu.ve_interface.vector_engine: inst: vle_v v3       PC 0x1036C
+// src/cpu/vector_engine/vector_engine.cc 459
 printMemInst(insn,vector_dyn_insn);
-
+// 203
+// 2269230000: system.cpu.ve_interface.vector_engine: renamed inst: vle_v v32   old_dst v3      PC 0x1036C
 void
 VectorEngine::printMemInst(RiscvISA::VectorStaticInst& insn,VectorDynInst *vector_dyn_insn)
 {
